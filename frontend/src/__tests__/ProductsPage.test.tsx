@@ -55,13 +55,15 @@ describe("ProductsPage", () => {
         return jsonResponse(products[0], 201);
       }
       if (init?.method === "DELETE") {
-        products = [];
+        const id = url.split("/")[2];
+        products = products.filter((product) => product.id !== id);
         return jsonResponse(undefined, 204);
       }
+      const page = Number(new URL(url, "http://test").searchParams.get("page"));
       return jsonResponse({
-        results: products,
+        results: products.slice((page - 1) * 5, page * 5),
         total: products.length,
-        page: 1,
+        page,
         page_size: 5,
       });
     });
@@ -73,7 +75,7 @@ describe("ProductsPage", () => {
 
     expect(await screen.findByText("Standing Desk")).toBeInTheDocument();
     expect(screen.getByText("$499.99")).toBeInTheDocument();
-    expect(screen.getByText("1 products")).toBeInTheDocument();
+    expect(screen.getByText("1 product")).toBeInTheDocument();
   });
 
   test("creates a product and refreshes the table", async () => {
@@ -96,6 +98,24 @@ describe("ProductsPage", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add product" }));
 
     expect(await screen.findByText("must not be empty")).toBeInTheDocument();
+  });
+
+  test("falls back to the last page when the current page empties", async () => {
+    products = Array.from({ length: 6 }, (_, index) => ({
+      ...PRODUCT,
+      id: String(index + 1),
+      name: `Product ${index + 1}`,
+    }));
+    render(<ProductsPage />);
+    await screen.findByText("Product 1");
+
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(await screen.findByText("Page 2 of 2")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+    expect(await screen.findByText("Page 1 of 1")).toBeInTheDocument();
+    expect(screen.getByText("Product 1")).toBeInTheDocument();
   });
 
   test("deletes a product", async () => {

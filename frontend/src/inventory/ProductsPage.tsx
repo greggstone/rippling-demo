@@ -26,6 +26,7 @@ export default function ProductsPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [resetToken, setResetToken] = useState(0);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -34,6 +35,11 @@ export default function ProductsPage() {
         listProducts({ page, pageSize: PAGE_SIZE, category }),
         listCategories(),
       ]);
+      const lastPage = Math.max(1, Math.ceil(productPage.total / PAGE_SIZE));
+      if (page > lastPage) {
+        setPage(lastPage);
+        return;
+      }
       setProducts(productPage.results);
       setTotal(productPage.total);
       setCategories(categoryList.results);
@@ -59,13 +65,16 @@ export default function ProductsPage() {
       }
       setEditing(null);
       setFieldErrors({});
+      setResetToken((current) => current + 1);
       setPage(1);
       await refresh();
     } catch (err) {
-      if (err instanceof ApiError) {
+      if (err instanceof ApiError && Object.keys(err.fieldErrors).length > 0) {
         setFieldErrors(err.fieldErrors);
+        setError(null);
+      } else {
+        setError("Could not save the product. Please try again.");
       }
-      setError((err as Error).message);
     } finally {
       setSubmitting(false);
     }
@@ -82,7 +91,9 @@ export default function ProductsPage() {
     <main className="products-page">
       <header>
         <h1>Product Inventory</h1>
-        <p>{total} products</p>
+        <p>
+          {total} {total === 1 ? "product" : "products"}
+        </p>
       </header>
 
       <div className="products-page__filters">
@@ -125,7 +136,11 @@ export default function ProductsPage() {
           )}
           {!loading && products.length === 0 && (
             <tr>
-              <td colSpan={6}>No products yet. Add one below.</td>
+              <td colSpan={6}>
+                {category
+                  ? `No products in ${category}.`
+                  : "No products yet. Add one below."}
+              </td>
             </tr>
           )}
           {!loading &&
@@ -171,6 +186,7 @@ export default function ProductsPage() {
 
       <ProductForm
         product={editing}
+        resetToken={resetToken}
         fieldErrors={fieldErrors}
         submitting={submitting}
         onSubmit={save}

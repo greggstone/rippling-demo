@@ -21,6 +21,7 @@ function toInput(product: Product | null): ProductInput {
 
 interface Props {
   product: Product | null;
+  resetToken: number;
   fieldErrors: Record<string, string>;
   submitting: boolean;
   onSubmit: (product: ProductInput) => void;
@@ -29,6 +30,7 @@ interface Props {
 
 export default function ProductForm({
   product,
+  resetToken,
   fieldErrors,
   submitting,
   onSubmit,
@@ -38,7 +40,7 @@ export default function ProductForm({
 
   useEffect(() => {
     setValues(toInput(product));
-  }, [product]);
+  }, [product, resetToken]);
 
   const update =
     (field: keyof ProductInput) =>
