@@ -1,0 +1,131 @@
+$border: #e2e6ea;
+$accent: #2f5bea;
+
+.products-page {
+  margin: 0 auto;
+  max-width: 900px;
+  padding: 32px 16px 64px;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+
+    h1 {
+      font-size: 28px;
+      margin: 0;
+    }
+
+    p {
+      color: #6b7280;
+    }
+  }
+
+  &__filters {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 16px 0;
+
+    select {
+      padding: 6px 8px;
+      border: 1px solid $border;
+      border-radius: 6px;
+    }
+  }
+
+  &__error {
+    background: #fdecea;
+    border-radius: 6px;
+    color: #b3261e;
+    padding: 8px 12px;
+  }
+
+  &__pagination {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  button {
+    background: #fff;
+    border: 1px solid $border;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-right: 6px;
+    padding: 6px 12px;
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+  }
+}
+
+.products-table {
+  border-collapse: collapse;
+  width: 100%;
+
+  th,
+  td {
+    border-bottom: 1px solid $border;
+    padding: 10px 8px;
+    text-align: left;
+  }
+
+  th {
+    color: #6b7280;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+}
+
+.product-form {
+  border: 1px solid $border;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 32px;
+  padding: 16px;
+
+  h2 {
+    font-size: 18px;
+    margin: 0 0 8px;
+  }
+
+  label {
+    color: #6b7280;
+    font-size: 13px;
+  }
+
+  input,
+  textarea {
+    border: 1px solid $border;
+    border-radius: 6px;
+    font: inherit;
+    margin-bottom: 8px;
+    padding: 8px;
+  }
+
+  &__actions {
+    display: flex;
+    gap: 8px;
+
+    button[type="submit"] {
+      background: $accent;
+      border-color: $accent;
+      color: #fff;
+    }
+  }
+
+  .field-error {
+    color: #b3261e;
+    font-size: 13px;
+    margin: -6px 0 8px;
+  }
+}
