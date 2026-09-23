@@ -59,10 +59,15 @@ describe("ProductsPage", () => {
         products = products.filter((product) => product.id !== id);
         return jsonResponse(undefined, 204);
       }
-      const page = Number(new URL(url, "http://test").searchParams.get("page"));
+      const params = new URL(url, "http://test").searchParams;
+      const page = Number(params.get("page"));
+      const filter = params.get("category");
+      const matching = filter
+        ? products.filter((product) => product.category === filter)
+        : products;
       return jsonResponse({
-        results: products.slice((page - 1) * 5, page * 5),
-        total: products.length,
+        results: matching.slice((page - 1) * 5, page * 5),
+        total: matching.length,
         page,
         page_size: 5,
       });
@@ -116,6 +121,26 @@ describe("ProductsPage", () => {
 
     expect(await screen.findByText("Page 1 of 1")).toBeInTheDocument();
     expect(screen.getByText("Product 1")).toBeInTheDocument();
+  });
+
+  test("clears a category filter when its last product is deleted", async () => {
+    products = [
+      PRODUCT,
+      { ...PRODUCT, id: "2", name: "Stapler", category: "Office" },
+    ];
+    render(<ProductsPage />);
+    await screen.findByText("Stapler");
+
+    await userEvent.selectOptions(
+      screen.getByLabelText("Filter by category"),
+      "Office",
+    );
+    expect(await screen.findByText("1 product")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+    expect(await screen.findByText("Standing Desk")).toBeInTheDocument();
+    expect(screen.getByLabelText("Filter by category")).toHaveValue("");
   });
 
   test("deletes a product", async () => {

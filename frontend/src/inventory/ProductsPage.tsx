@@ -35,6 +35,12 @@ export default function ProductsPage() {
         listProducts({ page, pageSize: PAGE_SIZE, category }),
         listCategories(),
       ]);
+      setCategories(categoryList.results);
+      if (category && !categoryList.results.includes(category)) {
+        setCategory("");
+        setPage(1);
+        return;
+      }
       const lastPage = Math.max(1, Math.ceil(productPage.total / PAGE_SIZE));
       if (page > lastPage) {
         setPage(lastPage);
@@ -42,7 +48,6 @@ export default function ProductsPage() {
       }
       setProducts(productPage.results);
       setTotal(productPage.total);
-      setCategories(categoryList.results);
       setError(null);
     } catch (err) {
       setError((err as Error).message);
