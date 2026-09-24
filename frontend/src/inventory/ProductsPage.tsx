@@ -1,6 +1,14 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import ProductForm from "./ProductForm";
+import ShortcutsHelp from "./ShortcutsHelp";
+import useKeyboardShortcuts from "./useKeyboardShortcuts";
 import {
   ApiError,
   Product,
@@ -27,6 +35,7 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [resetToken, setResetToken] = useState(0);
+  const [helpOpen, setHelpOpen] = useState(false);
   const requestId = useRef(0);
 
   const refresh = useCallback(async () => {
@@ -114,6 +123,25 @@ export default function ProductsPage() {
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
+  const shortcutHandlers = useMemo(
+    () => ({
+      focusAddForm: () => document.getElementById("name")?.focus(),
+      cancel: () => {
+        setEditing(null);
+        setFieldErrors({});
+        setResetToken((current) => current + 1);
+        setHelpOpen(false);
+      },
+      nextPage: () => setPage((current) => Math.min(totalPages, current + 1)),
+      previousPage: () => setPage((current) => Math.max(1, current - 1)),
+      focusFilter: () => document.getElementById("category-filter")?.focus(),
+      refresh,
+      toggleHelp: () => setHelpOpen((open) => !open),
+    }),
+    [refresh, totalPages],
+  );
+  useKeyboardShortcuts(shortcutHandlers);
+
   return (
     <main className="products-page">
       <header>
@@ -121,7 +149,17 @@ export default function ProductsPage() {
         <p>
           {total} {total === 1 ? "product" : "products"}
         </p>
+        <button
+          type="button"
+          className="products-page__help-toggle"
+          onClick={() => setHelpOpen((open) => !open)}
+          aria-label="Keyboard shortcuts"
+          title="Keyboard shortcuts (?)"
+        >
+          ?
+        </button>
       </header>
+      <ShortcutsHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
 
       <div className="products-page__filters">
         <label htmlFor="category-filter">Filter by category</label>
