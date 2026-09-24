@@ -68,11 +68,12 @@ class RoleChangeActivities:
                         sequence=sequence,
                         idempotency_key=contracts.idempotency_key(request.pk, name),
                     )
-            run.status = WorkflowRun.Status.RUNNING
-            run.attempt += 1
-            run.last_error = ""
-            run.started_at = run.started_at or timezone.now()
-            run.save()
+            if created or run.status != WorkflowRun.Status.RUNNING:
+                run.status = WorkflowRun.Status.RUNNING
+                run.attempt += 1
+                run.last_error = ""
+                run.started_at = run.started_at or timezone.now()
+                run.save()
         activity.logger.info("run=%s %s", run.pk, "created" if created else "reused")
         return run.pk
 

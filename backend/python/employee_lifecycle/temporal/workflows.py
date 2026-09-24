@@ -99,17 +99,14 @@ class RoleChangeWorkflow:
         run is marked FAILED. Once everything has settled, any failure fails
         the workflow.
         """
-        self._in_flight = list(steps)
         outcomes = await asyncio.gather(
             *(self._step(run_id, step) for step in steps), return_exceptions=True
         )
-        self._in_flight = []
 
         for step, outcome in zip(steps, outcomes):
             if isinstance(outcome, BaseException):
                 self._failures.append(_describe_failure(step, outcome))
             else:
-                self._completed.append(step)
                 context.update(outcome)
 
         if self._failures:
@@ -125,12 +122,18 @@ class RoleChangeWorkflow:
 
     async def _step(self, run_id: int, step: str) -> dict[str, Any]:
         workflow.logger.info("run=%s step=%s starting", run_id, step)
-        return await workflow.execute_activity(
-            step,
-            StepInput(run_id=run_id, step=step),
-            start_to_close_timeout=contracts.REMOTE_STEP_TIMEOUT,
-            retry_policy=contracts.REMOTE_STEP_RETRY,
-        )
+        self._in_flight.append(step)
+        try:
+            result = await workflow.execute_activity(
+                step,
+                StepInput(run_id=run_id, step=step),
+                start_to_close_timeout=contracts.REMOTE_STEP_TIMEOUT,
+                retry_policy=contracts.REMOTE_STEP_RETRY,
+            )
+        finally:
+            self._in_flight.remove(step)
+        self._completed.append(step)
+        return result
 
     async def _finish(self, run_id: int, context: dict[str, Any], status: str) -> None:
         await workflow.execute_activity(
