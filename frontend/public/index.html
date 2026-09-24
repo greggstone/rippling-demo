@@ -27,16 +27,17 @@
     <title>Product Inventory</title>
     <script>
       (function () {
+        var saved = null;
         try {
-          var saved = localStorage.getItem("theme");
-          var theme =
-            saved === "light" || saved === "dark"
-              ? saved
-              : window.matchMedia("(prefers-color-scheme: dark)").matches
-                ? "dark"
-                : "light";
-          document.documentElement.setAttribute("data-theme", theme);
+          saved = localStorage.getItem("theme");
         } catch (e) {}
+        var theme =
+          saved === "light" || saved === "dark"
+            ? saved
+            : window.matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dark"
+              : "light";
+        document.documentElement.setAttribute("data-theme", theme);
       })();
     </script>
   </head>
