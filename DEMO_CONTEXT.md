@@ -52,16 +52,47 @@ typical of hand-rolled orchestration:
   (idempotency keys, re-reading remote state before acting)
 - steps 2, 3 and 4 only depend on step 1 yet are executed serially
 
-## What the demo will do next
+## Modernized implementation: `employee_lifecycle/temporal/`
 
-A later phase will ask Devin to modernize this workflow (for example onto a
-durable execution platform) while keeping the characterization tests in
-`employee_lifecycle/tests.py` green. Nothing in this baseline should be
-interpreted as a statement about Rippling's architecture.
+The same business steps now also run as a durable Temporal workflow
+(`temporalio` Python SDK):
+
+| Legacy concern (`orchestrator.py`)            | Temporal equivalent                                                     |
+| --------------------------------------------- | ----------------------------------------------------------------------- |
+| sequential `for name, handler in STEP_SEQUENCE` | `RoleChangeWorkflow`: HR update → `asyncio.gather` of eligibility / payroll / access → notify |
+| `_run_step_with_retries` + `BACKOFF_SECONDS`  | activity `RetryPolicy` (3 attempts, 0.5s ×4 backoff, `PermanentServiceError` non-retryable) |
+| `resume()` / `resume_failed_workflows`        | start the workflow again for the request (`ALLOW_DUPLICATE_FAILED_ONLY`); activities skip COMPLETED steps |
+| `run.status == RUNNING` guard                 | workflow id `role-change-<request>` – Temporal rejects a second concurrent run |
+| logging + state tables                        | Temporal event history, `progress` query, plus the same `WorkflowRun` / `WorkflowStepRun` projection for the HTTP API and admin |
+
+- `contracts.py` – activity names, retry policies/timeouts, dataclass payloads (sandbox-safe, no Django)
+- `workflows.py` – `RoleChangeWorkflow` (no I/O; fan-out waits for every branch to settle before failing)
+- `activities.py` – one activity per step, wrapping the unchanged handlers in `steps.py` with step-row bookkeeping and the idempotency guard
+- `worker.py` – `build_worker()` and `execute_role_change()`; `manage.py run_temporal_worker` runs a worker against `TEMPORAL_ADDRESS`
+
+Behavioural difference to be aware of: because steps 2–4 fan out, a failure in
+one of them no longer leaves its siblings `PENDING` – they run to completion
+and the run is marked `FAILED` only once all three have settled.
+
+The legacy orchestrator and its characterization tests are kept unchanged as
+the baseline; the HTTP views still use it until a Temporal service is part of
+the deployment. Nothing here should be interpreted as a statement about
+Rippling's architecture.
 
 ## Running the tests
 
 ```bash
 cd backend/python
 ./venv/bin/python manage.py test
+```
+
+`employee_lifecycle/test_temporal.py` uses Temporal's time-skipping test
+server (`WorkflowEnvironment.start_time_skipping()`), which the SDK downloads
+on first use; no separately managed Temporal service is required.
+
+To run the durable workflow for real:
+
+```bash
+temporal server start-dev                     # in another terminal
+./venv/bin/python manage.py run_temporal_worker
 ```
