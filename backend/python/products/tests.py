@@ -12,6 +12,7 @@ from django.test import Client, SimpleTestCase
 
 from .repository import ProductNotFound
 from .serializers import ValidationError, validate_product
+from .views import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 
 
 class FakeRepository:
@@ -150,3 +151,67 @@ class ProductApiTests(SimpleTestCase):
             self.client.get("/products/categories/").json()["results"],
             ["Devices", "Furniture"],
         )
+
+
+class ProductRequestParsingTests(SimpleTestCase):
+    """Covers how views translate raw HTTP input into repository calls."""
+
+    def setUp(self):
+        self.client = Client()
+        self.repository = FakeRepository()
+        patcher = patch("products.views._repository", return_value=self.repository)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_malformed_json_body_returns_400(self):
+        response = self.client.post(
+            "/products/", data="{not json", content_type="application/json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("body", response.json()["errors"])
+
+    def test_non_object_json_body_returns_400(self):
+        response = self.client.post(
+            "/products/", data="[]", content_type="application/json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("body", response.json()["errors"])
+
+    def test_unparsable_pagination_params_fall_back_to_defaults(self):
+        listing = self.client.get("/products/?page=abc&page_size=0").json()
+        self.assertEqual(listing["page"], 1)
+        self.assertEqual(listing["page_size"], DEFAULT_PAGE_SIZE)
+
+    def test_page_size_is_capped(self):
+        listing = self.client.get("/products/?page_size=10000").json()
+        self.assertEqual(listing["page_size"], MAX_PAGE_SIZE)
+
+    def test_blank_category_is_not_treated_as_a_filter(self):
+        self.client.post(
+            "/products/",
+            data=json.dumps(VALID_PRODUCT),
+            content_type="application/json",
+        )
+        self.assertEqual(self.client.get("/products/?category=").json()["total"], 1)
+
+    def test_unsupported_methods_are_rejected(self):
+        self.assertEqual(self.client.delete("/products/").status_code, 405)
+        self.assertEqual(self.client.post("/products/categories/").status_code, 405)
+
+    def test_update_of_unknown_product_returns_404(self):
+        response = self.client.put(
+            "/products/missing/",
+            data=json.dumps(VALID_PRODUCT),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_update_with_invalid_payload_returns_400(self):
+        product_id = self.repository.create(VALID_PRODUCT)["id"]
+        response = self.client.put(
+            f"/products/{product_id}/",
+            data=json.dumps({**VALID_PRODUCT, "name": ""}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("name", response.json()["errors"])
