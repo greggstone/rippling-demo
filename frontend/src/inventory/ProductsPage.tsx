@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 
 import ProductForm from "./ProductForm";
+import ThemeToggle from "../theme/ThemeToggle";
 import {
   ApiError,
   Product,
@@ -99,6 +100,7 @@ export default function ProductsPage() {
         <p>
           {total} {total === 1 ? "product" : "products"}
         </p>
+        <ThemeToggle />
       </header>
 
       <div className="products-page__filters">
