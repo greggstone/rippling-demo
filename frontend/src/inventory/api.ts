@@ -20,10 +20,16 @@ export interface ProductPage {
 }
 
 export class ApiError extends Error {
+  readonly status: number;
   readonly fieldErrors: Record<string, string>;
 
-  constructor(message: string, fieldErrors: Record<string, string> = {}) {
+  constructor(
+    message: string,
+    status: number,
+    fieldErrors: Record<string, string> = {},
+  ) {
     super(message);
+    this.status = status;
     this.fieldErrors = fieldErrors;
   }
 }
@@ -45,6 +51,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     }
     throw new ApiError(
       `Request failed with status ${response.status}`,
+      response.status,
       fieldErrors,
     );
   }

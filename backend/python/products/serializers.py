@@ -7,6 +7,8 @@ MAX_NAME_LENGTH = 120
 MAX_DESCRIPTION_LENGTH = 1000
 MAX_BRAND_LENGTH = 80
 MAX_CATEGORY_LENGTH = 80
+MAX_PRICE = Decimal("1000000000")
+MAX_QUANTITY = 2**31 - 1
 
 
 class ValidationError(Exception):
@@ -46,13 +48,21 @@ def _clean_price(payload: dict[str, Any], errors: dict[str, str]) -> float:
     if value is None:
         errors["price"] = "this field is required"
         return 0.0
+    if isinstance(value, bool):
+        errors["price"] = "must be a number"
+        return 0.0
     try:
         price = Decimal(str(value))
     except (InvalidOperation, ValueError):
         errors["price"] = "must be a number"
         return 0.0
+    if not price.is_finite():
+        errors["price"] = "must be a number"
+        return 0.0
     if price < 0:
         errors["price"] = "must not be negative"
+    elif price > MAX_PRICE:
+        errors["price"] = f"must be at most {MAX_PRICE}"
     elif price.as_tuple().exponent < -2:
         errors["price"] = "must have at most 2 decimal places"
     return float(price)
@@ -70,6 +80,8 @@ def _clean_quantity(payload: dict[str, Any], errors: dict[str, str]) -> int:
         return 0
     if quantity < 0:
         errors["quantity"] = "must not be negative"
+    elif quantity > MAX_QUANTITY:
+        errors["quantity"] = f"must be at most {MAX_QUANTITY}"
     return quantity
 
 

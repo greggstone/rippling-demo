@@ -88,6 +88,21 @@ class ProductSerializerTests(SimpleTestCase):
             validate_product({**VALID_PRODUCT, "price": "10.999"})
         self.assertIn("price", context.exception.errors)
 
+    def test_rejects_non_finite_and_oversized_prices(self):
+        for price in ("NaN", "Infinity", "-inf", 1e400, "1e400", True):
+            with self.subTest(price=price):
+                with self.assertRaises(ValidationError) as context:
+                    validate_product({**VALID_PRODUCT, "price": price})
+                self.assertEqual(set(context.exception.errors), {"price"})
+
+    def test_rejects_quantities_beyond_storage_limits(self):
+        with self.assertRaises(ValidationError) as context:
+            validate_product({**VALID_PRODUCT, "quantity": 10**30})
+        self.assertEqual(set(context.exception.errors), {"quantity"})
+        with self.assertRaises(ValidationError) as context:
+            validate_product({**VALID_PRODUCT, "quantity": "1" * 5000})
+        self.assertEqual(set(context.exception.errors), {"quantity"})
+
 
 class ProductApiTests(SimpleTestCase):
     def setUp(self):

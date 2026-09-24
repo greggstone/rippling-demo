@@ -1,6 +1,13 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import ProductForm from "./ProductForm";
+import ThemeToggle from "../theme/ThemeToggle";
 import ShortcutsHelp from "./ShortcutsHelp";
 import useKeyboardShortcuts from "./useKeyboardShortcuts";
 import {
@@ -30,14 +37,19 @@ export default function ProductsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [resetToken, setResetToken] = useState(0);
   const [helpOpen, setHelpOpen] = useState(false);
+  const requestId = useRef(0);
 
   const refresh = useCallback(async () => {
+    const current = ++requestId.current;
     setLoading(true);
     try {
       const [productPage, categoryList] = await Promise.all([
         listProducts({ page, pageSize: PAGE_SIZE, category }),
         listCategories(),
       ]);
+      if (current !== requestId.current) {
+        return;
+      }
       setCategories(categoryList.results);
       if (category && !categoryList.results.includes(category)) {
         setCategory("");
@@ -53,9 +65,14 @@ export default function ProductsPage() {
       setTotal(productPage.total);
       setError(null);
     } catch (err) {
+      if (current !== requestId.current) {
+        return;
+      }
       setError((err as Error).message);
     } finally {
-      setLoading(false);
+      if (current === requestId.current) {
+        setLoading(false);
+      }
     }
   }, [page, category]);
 
@@ -89,7 +106,19 @@ export default function ProductsPage() {
   };
 
   const remove = async (product: Product) => {
-    await deleteProduct(product.id);
+    try {
+      await deleteProduct(product.id);
+    } catch (err) {
+      const notFound = err instanceof ApiError && err.status === 404;
+      if (!notFound) {
+        setError("Could not delete the product. Please try again.");
+        return;
+      }
+    }
+    if (editing?.id === product.id) {
+      setEditing(null);
+      setFieldErrors({});
+    }
     await refresh();
   };
 
@@ -121,6 +150,7 @@ export default function ProductsPage() {
         <p>
           {total} {total === 1 ? "product" : "products"}
         </p>
+        <ThemeToggle />
         <button
           type="button"
           className="products-page__help-toggle"
