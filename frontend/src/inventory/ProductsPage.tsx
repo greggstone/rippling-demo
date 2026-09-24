@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import ProductForm from "./ProductForm";
+import ThemeToggle from "../theme/ThemeToggle";
 import ShortcutsHelp from "./ShortcutsHelp";
 import useKeyboardShortcuts from "./useKeyboardShortcuts";
 import {
@@ -121,6 +122,7 @@ export default function ProductsPage() {
         <p>
           {total} {total === 1 ? "product" : "products"}
         </p>
+        <ThemeToggle />
         <button
           type="button"
           className="products-page__help-toggle"
