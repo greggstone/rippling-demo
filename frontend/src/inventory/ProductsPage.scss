@@ -1,5 +1,6 @@
-$border: #e2e6ea;
-$accent: #2f5bea;
+$border: var(--border);
+$accent: var(--accent);
+$muted: var(--text-muted);
 
 .products-page {
   margin: 0 auto;
@@ -19,7 +20,7 @@ $accent: #2f5bea;
     }
 
     p {
-      color: #6b7280;
+      color: $muted;
     }
   }
 
@@ -30,6 +31,8 @@ $accent: #2f5bea;
     margin: 16px 0;
 
     select {
+      background: var(--surface);
+      color: var(--text);
       padding: 6px 8px;
       border: 1px solid $border;
       border-radius: 6px;
@@ -37,9 +40,9 @@ $accent: #2f5bea;
   }
 
   &__error {
-    background: #fdecea;
+    background: var(--error-bg);
     border-radius: 6px;
-    color: #b3261e;
+    color: var(--error-text);
     padding: 8px 12px;
   }
 
@@ -51,7 +54,8 @@ $accent: #2f5bea;
   }
 
   button {
-    background: #fff;
+    background: var(--surface);
+    color: var(--text);
     border: 1px solid $border;
     border-radius: 6px;
     cursor: pointer;
@@ -77,7 +81,7 @@ $accent: #2f5bea;
   }
 
   th {
-    color: #6b7280;
+    color: $muted;
     font-size: 12px;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -99,12 +103,14 @@ $accent: #2f5bea;
   }
 
   label {
-    color: #6b7280;
+    color: $muted;
     font-size: 13px;
   }
 
   input,
   textarea {
+    background: var(--surface);
+    color: var(--text);
     border: 1px solid $border;
     border-radius: 6px;
     font: inherit;
@@ -119,12 +125,12 @@ $accent: #2f5bea;
     button[type="submit"] {
       background: $accent;
       border-color: $accent;
-      color: #fff;
+      color: var(--accent-text);
     }
   }
 
   .field-error {
-    color: #b3261e;
+    color: var(--error-text);
     font-size: 13px;
     margin: -6px 0 8px;
   }
