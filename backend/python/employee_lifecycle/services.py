@@ -17,7 +17,7 @@ def get_external_systems() -> ExternalSystems:
 
 
 def _temporal_engine() -> bool:
-    return getattr(settings, "EMPLOYEE_LIFECYCLE_ENGINE", "legacy") == "temporal"
+    return settings.EMPLOYEE_LIFECYCLE_ENGINE == "temporal"
 
 
 async def connect_client():

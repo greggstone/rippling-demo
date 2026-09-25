@@ -192,6 +192,9 @@ class TemporalTransientFailureTests(TemporalTestCase):
             WorkflowStepRun.Status.PENDING,
         )
         self.assertEqual(self.systems.notifications.published, [])
+        # Results the parallel siblings wrote before the failure are kept.
+        self.assertIn("payroll_confirmation_id", run.context)
+        self.assertIn("access_groups", run.context)
 
 
 class TemporalPartialFailureTests(TemporalTestCase):
@@ -218,6 +221,17 @@ class TemporalPartialFailureTests(TemporalTestCase):
         self.assertIn("E1001", self.systems.benefits.enrollments)
         self.assertIn("E1001", self.systems.payroll.configurations)
         self.assertEqual(self.systems.notifications.published, [])
+        self.assertNotIn("access_groups", run.context)
+
+    def test_failed_run_context_keeps_sibling_results(self):
+        # A failed step must not clobber context keys written by its
+        # concurrently-running siblings.
+        self.make_systems(FaultPlan(permanent={"identity.grant"}))
+        run, exc = self.failed_run()
+
+        self.assertEqual(run.status, WorkflowRun.Status.FAILED)
+        self.assertIn("payroll_confirmation_id", run.context)
+        self.assertIn("benefits_confirmation_id", run.context)
         self.assertNotIn("access_groups", run.context)
 
     def test_half_applied_access_reconciliation(self):
@@ -423,7 +437,6 @@ class ActivityShortCircuitTests(TemporalTestCase):
         def run_in_thread():
             # ActivityEnvironment invokes the sync activity from async
             # context; this dedicated thread is the only thing affected.
-            os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
             acts = RoleChangeActivities(self.systems)
 
             async def go():
@@ -456,9 +469,10 @@ class ActivityShortCircuitTests(TemporalTestCase):
             except Exception as exc:  # noqa: BLE001
                 holder["exc"] = exc
 
-        thread = threading.Thread(target=target)
-        thread.start()
-        thread.join(timeout=60)
+        with patch.dict(os.environ, {"DJANGO_ALLOW_ASYNC_UNSAFE": "true"}):
+            thread = threading.Thread(target=target)
+            thread.start()
+            thread.join(timeout=60)
         if "exc" in holder:
             raise holder["exc"]
         ref, out = holder["out"]

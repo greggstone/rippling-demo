@@ -71,7 +71,7 @@ class RoleChangeWorkflow:
                 *(self._step(name) for name in PARALLEL_STEPS),
                 return_exceptions=True,
             )
-            for name, result in zip(PARALLEL_STEPS, results):
+            for result in results:
                 if isinstance(result, BaseException):
                     raise result
             await self._step("notify_downstream")
@@ -79,7 +79,10 @@ class RoleChangeWorkflow:
             self._status = "FAILED"
             step = self._failed[-1] if self._failed else "unknown"
             cause = exc.cause
-            message = getattr(cause, "message", None) or str(cause or exc)
+            if isinstance(cause, ApplicationError):
+                message = cause.message
+            else:
+                message = str(cause or exc)
             await workflow.execute_activity(
                 RoleChangeActivities.mark_run_failed,
                 RunOutcome(

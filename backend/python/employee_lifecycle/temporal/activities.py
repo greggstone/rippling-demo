@@ -6,6 +6,7 @@ database connections so worker threads never leak connections.
 """
 
 import functools
+import threading
 from collections.abc import Callable
 from typing import Any
 
@@ -34,6 +35,10 @@ from .contracts import (
 )
 
 STEP_HANDLERS: dict[str, Callable[..., dict[str, Any]]] = dict(STEP_SEQUENCE)
+
+# Serialises multi-statement transactions across parallel step activities;
+# sqlite cannot queue two read-then-write transactions without deadlocking.
+_db_write_lock = threading.Lock()
 
 
 def _with_clean_connections(fn: Callable) -> Callable:
@@ -116,10 +121,13 @@ class RoleChangeActivities:
                 skipped=True,
             )
 
-        # The workflow's context is the source of truth between steps.
-        run.context = dict(input.context)
+        # Merge the workflow's context with the stored one in memory only;
+        # concurrent sibling steps may already have written keys the
+        # workflow has not seen yet, so overwriting the row would clobber
+        # their results. The row's context is only written on success below.
+        run.context = {**run.context, **input.context}
         run.current_step = step.name
-        run.save(update_fields=["context", "current_step", "updated_at"])
+        run.save(update_fields=["current_step", "updated_at"])
 
         step.status = WorkflowStepRun.Status.RUNNING
         step.started_at = step.started_at or timezone.now()
@@ -159,7 +167,7 @@ class RoleChangeActivities:
         step.save()
         # Merge the step result into run context without clobbering keys
         # written by sibling steps running concurrently.
-        with transaction.atomic():
+        with _db_write_lock, transaction.atomic():
             locked = WorkflowRun.objects.select_for_update().get(pk=run.pk)
             locked.context = {**locked.context, **result}
             locked.save(update_fields=["context", "updated_at"])

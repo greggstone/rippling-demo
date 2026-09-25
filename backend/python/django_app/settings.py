@@ -81,7 +81,7 @@ DATABASES = {
         "NAME": BASE_DIR / "db.sqlite3",
         # The Temporal engine runs workflow steps concurrently on worker
         # threads; a busy timeout keeps concurrent writes from erroring.
-        "OPTIONS": {"timeout": 20},
+        "OPTIONS": {"timeout": 20, "transaction_mode": "IMMEDIATE"},
         # File-based so worker threads share one database during tests.
         "TEST": {"NAME": BASE_DIR / "test_db.sqlite3"},
     }
