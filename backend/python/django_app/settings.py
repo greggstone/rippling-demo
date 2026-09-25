@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -78,6 +79,11 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db.sqlite3",
+        # The Temporal engine runs workflow steps concurrently on worker
+        # threads; a busy timeout keeps concurrent writes from erroring.
+        "OPTIONS": {"timeout": 20},
+        # File-based so worker threads share one database during tests.
+        "TEST": {"NAME": BASE_DIR / "test_db.sqlite3"},
     }
 }
 
@@ -122,3 +128,8 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/6.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+EMPLOYEE_LIFECYCLE_ENGINE = os.environ.get("EMPLOYEE_LIFECYCLE_ENGINE", "legacy")  # "legacy" | "temporal"
+TEMPORAL_ADDRESS = os.environ.get("TEMPORAL_ADDRESS", "localhost:7233")
+TEMPORAL_NAMESPACE = os.environ.get("TEMPORAL_NAMESPACE", "default")
+TEMPORAL_TASK_QUEUE = os.environ.get("TEMPORAL_TASK_QUEUE", "employee-lifecycle")
