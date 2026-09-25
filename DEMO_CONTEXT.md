@@ -59,6 +59,41 @@ durable execution platform) while keeping the characterization tests in
 `employee_lifecycle/tests.py` green. Nothing in this baseline should be
 interpreted as a statement about Rippling's architecture.
 
+## Temporal implementation
+
+`employee_lifecycle/temporal/` contains an equivalent implementation on the
+Temporal Python SDK, alongside the untouched legacy orchestrator:
+
+- `contracts.py` – pure dataclasses (workflow input/output, step I/O,
+  progress) and constants (task queue, retry/error types).
+- `activities.py` – `RoleChangeActivities` wraps the same step functions and
+  ORM state (`WorkflowRun` / `WorkflowStepRun` remain the API-visible state).
+  Transient failures raise retryable application errors; permanent failures
+  raise non-retryable ones; completed steps short-circuit on redelivery.
+- `workflows.py` – `RoleChangeWorkflow`: `update_hr_record`, then
+  `recalculate_eligibility` / `update_payroll` / `reconcile_access`
+  concurrently, then `notify_downstream`. Temporal retry policy replaces the
+  hand-rolled backoff loop; a `progress` query exposes step status.
+- `worker.py` – `build_worker` / `connect` / `start_role_change` /
+  `execute_role_change`. Workflow ids are `role-change-<request_id>` with
+  `ALLOW_DUPLICATE_FAILED_ONLY`, so re-running a failed request resumes the
+  same run while a duplicate start on a live one is rejected.
+- `management/commands/run_temporal_worker.py` – worker entry point.
+
+The engine is selected with `EMPLOYEE_LIFECYCLE_ENGINE` (`legacy` default,
+`temporal` to opt in); the API in `views.py` is unchanged. To run against a
+local Temporal server:
+
+```bash
+EMPLOYEE_LIFECYCLE_ENGINE=temporal ./venv/bin/python manage.py run_temporal_worker
+```
+
+`TEMPORAL_ADDRESS` / `TEMPORAL_NAMESPACE` / `TEMPORAL_TASK_QUEUE` configure
+the connection (`localhost:7233` / `default` / `employee-lifecycle` by
+default). `resume_failed_workflows` and the `/resume/` endpoint still work;
+in temporal mode they start a new execution of the same workflow id, which
+skips already-completed steps.
+
 ## Running the tests
 
 ```bash
